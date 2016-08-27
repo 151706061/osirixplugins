@@ -12,6 +12,8 @@
      PURPOSE.
 =========================================================================*/
 
+#define OSIRIX_VIEWER
+
 #import "RoiEnhancementChart.h"
 #import <OsiriXAPI/DCMPix.h>
 #import <GRAxes.h>
@@ -22,6 +24,8 @@
 #import "RoiEnhancementROIList.h"
 #import <OsiriXAPI/ROI.h>
 #import <OsiriXAPI/DCMView.h>
+#import <OsiriXAPI/DCMPix.h>
+#import <OsiriXAPI/DicomImage.h>
 #import "RoiEnhancementOptions.h"
 
 @implementation RoiEnhancementChart
@@ -121,34 +125,97 @@
 
 // GRChartView delegate/dataSource
 
--(NSInteger)chart:(GRChartView*)chart numberOfElementsForDataSet:(GRDataSet*)dataSet {
+-(NSInteger)chart:(GRChartView*)chart numberOfElementsForDataSet:(GRDataSet*)dataSet
+{
 	if ([[_interface options] xRangeMode] == XRange4thDimension)
+    {
+        ROISel roiSel;
+        RoiEnhancementROIRec* roiRec = [[_interface roiList] findRecordByDataSet:dataSet sel:&roiSel];
+        
+//        DicomImage *start = [[[_interface viewer] fileList: 0] objectAtIndex: roiRec.roiIndexPixList];
+//        DicomImage *end = [[[_interface viewer] fileList: [[_interface viewer] maxMovieIndex] -1] objectAtIndex: roiRec.roiIndexPixList];
+//        
+//        NSLog( @"start: %@", start.date);
+//        NSLog( @"end: %@", end.date);
+//        NSLog( @"seconds: %f", [end.date timeIntervalSinceReferenceDate] - [start.date timeIntervalSinceReferenceDate]);
+        
+        
 		return [[_interface viewer] maxMovieIndex];
+    }
 	else
 		return [[[_interface viewer] pixList] count];
 }
 
--(void)yValueForROIRec:(RoiEnhancementROIRec*)roiRec element:(NSInteger)element min:(float*)min mean:(float*)mean max:(float*)max {
-	NSString *keyPix;
-	if ([[_interface options] xRangeMode] == XRange4thDimension)
-		keyPix = [NSString stringWithFormat: @"%X", [[_interface viewer] pixList: element]];
-	else keyPix = [NSString stringWithFormat: @"%X", [[[_interface viewer] pixList] objectAtIndex:element]];
+-(void)yValueForROIRec:(RoiEnhancementROIRec*)roiRec element:(NSInteger)element min:(float*)min mean:(float*)mean max:(float*)max
+{
+	NSString *keyPix = nil;
+    
+    if( [[roiRec roi] type] == tBall) // tBall not supported, except in 4th Dimension
+    {
+        if( [[_interface options] xRangeMode] != XRange4thDimension)
+        {
+            if( mean)
+                *mean = 0;
+            
+            if( min)
+                *min = 0;
+            
+            if( max)
+                *max = 0;
+            
+            return;
+        }
+    }
+    
+	if( [[_interface options] xRangeMode] == XRange4thDimension)
+		keyPix = [NSString stringWithFormat: @"%lX", (unsigned long) [[_interface viewer] pixList: element]];
+	else
+        keyPix = [NSString stringWithFormat: @"%lX", (unsigned long) [[[_interface viewer] pixList] objectAtIndex:element]];
 	
 	NSMutableDictionary* cache = [_cache objectForKey:[roiRec roi]];
 	
-	if ([cache objectForKey:keyPix] == NULL) {
-		if ([[_interface options] xRangeMode] == XRange4thDimension) {
-			[[[[_interface viewer] pixList: element] objectAtIndex:[[[_interface viewer] imageView] curImage]] computeROI:[roiRec roi] :mean :NULL :NULL :min :max];
-		} else {
+	if ([cache objectForKey:keyPix] == NULL)
+    {
+		if ([[_interface options] xRangeMode] == XRange4thDimension)
+        {
+//            DCMPix *p = [[[_interface viewer] pixList: element] objectAtIndex:[[[_interface viewer] imageView] curImage]];
+            
+            DCMPix *p = [[[_interface viewer] pixList: element] objectAtIndex: roiRec.roiIndexPixList];
+            
+            id backup = nil;
+            if( [[roiRec roi] type] == tBall)
+            {
+                backup = [roiRec.roi.curView.dcmPixList retain];
+                roiRec.roi.curView.dcmPixList = [[_interface viewer] pixList: element];
+            }
+            
+			[p computeROI:[roiRec roi] :mean :NULL :NULL :min :max];
+            
+            if( backup)
+            {
+                roiRec.roi.curView.dcmPixList = backup;
+                [backup release];
+            }
+		}
+        else
+        {
 			if ([[[_interface viewer] imageView] flippedData])
 				element = [[[_interface viewer] pixList] count]-element-1;
-			[[[[_interface viewer] pixList] objectAtIndex:element] computeROI:[roiRec roi] :mean :NULL :NULL :min :max];
+            
+            DCMPix *p = [[[_interface viewer] pixList] objectAtIndex:element];
+			[p computeROI:[roiRec roi] :mean :NULL :NULL :min :max];
 		}
 		
-		NSMutableDictionary *imageCache = [NSMutableDictionary dictionary];	
-		[imageCache setValue: [NSNumber numberWithFloat:*mean] forKey: @"mean"];
-		[imageCache setValue: [NSNumber numberWithFloat:*min] forKey: @"min"];
-		[imageCache setValue: [NSNumber numberWithFloat:*max] forKey: @"max"];
+		NSMutableDictionary *imageCache = [NSMutableDictionary dictionary];
+        
+        if( mean)
+            [imageCache setValue: [NSNumber numberWithFloat:*mean] forKey: @"mean"];
+		
+        if( min)
+            [imageCache setValue: [NSNumber numberWithFloat:*min] forKey: @"min"];
+		
+        if( max)
+            [imageCache setValue: [NSNumber numberWithFloat:*max] forKey: @"max"];
 		
 		if (!cache) {
 			cache = [NSMutableDictionary dictionary];
@@ -160,9 +227,15 @@
 	else
 	{
 		NSDictionary *imageCache = [cache objectForKey:keyPix];
-		*mean = [[imageCache valueForKey:@"mean"] floatValue];
-		*min = [[imageCache valueForKey:@"min"] floatValue];
-		*max = [[imageCache valueForKey:@"max"] floatValue];
+        
+        if( mean)
+            *mean = [[imageCache valueForKey:@"mean"] floatValue];
+        
+        if( min)
+            *min = [[imageCache valueForKey:@"min"] floatValue];
+		
+        if( max)
+            *max = [[imageCache valueForKey:@"max"] floatValue];
 	}
 }
 
@@ -244,23 +317,27 @@
 	[self setNeedsDisplay:YES];
 }
 
--(void)drawTrackingGizmoAtPoint:(NSPoint)point withValue:(float)value {
-	NSGraphicsContext* context = [NSGraphicsContext currentContext];
-	[context saveGraphicsState];
-	
-	static NSDictionary* attributes = [[NSDictionary dictionaryWithObjectsAndKeys: [NSFont systemFontOfSize:[NSFont smallSystemFontSize]-2], NSFontAttributeName, NULL] retain];
-	
-	NSString* string = [[_interface floatFormatter] stringFromNumber:[NSNumber numberWithFloat:value]];
-	NSSize size = [string sizeWithAttributes:attributes];
-	
-	[NSBezierPath strokeLineFromPoint:point toPoint:NSMakePoint(point.x+5, point.y)];
-	[NSBezierPath setDefaultLineWidth: 0];
-	[[[NSColor whiteColor] colorWithAlphaComponent:.5] setFill];
-	NSRect rect = NSMakeRect(point.x+4, point.y+2, size.width, size.height);
-	[[NSBezierPath bezierPathWithRect:NSMakeRect(rect.origin.x-2, rect.origin.y, rect.size.width+3, rect.size.height-1)] fill];
-	[string drawInRect:rect withAttributes:attributes];
-	
-	[context restoreGraphicsState];
+-(void)drawTrackingGizmoAtPoint:(NSPoint)point withValue:(float)value
+{
+    if( point.y == point.y && point.x == point.x && value == value) // test for nan
+    {
+        NSGraphicsContext* context = [NSGraphicsContext currentContext];
+        [context saveGraphicsState];
+        
+        static NSDictionary* attributes = [[NSDictionary dictionaryWithObjectsAndKeys: [NSFont systemFontOfSize:[NSFont smallSystemFontSize]-2], NSFontAttributeName, NULL] retain];
+        
+        NSString* string = [[_interface floatFormatter] stringFromNumber:[NSNumber numberWithFloat:value]];
+        NSSize size = [string sizeWithAttributes:attributes];
+        
+        [NSBezierPath strokeLineFromPoint:point toPoint:NSMakePoint(point.x+5, point.y)];
+        [NSBezierPath setDefaultLineWidth: 0];
+        [[[NSColor whiteColor] colorWithAlphaComponent:.5] setFill];
+        NSRect rect = NSMakeRect(point.x+4, point.y+2, size.width, size.height);
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(rect.origin.x-2, rect.origin.y, rect.size.width+3, rect.size.height-1)] fill];
+        [string drawInRect:rect withAttributes:attributes];
+        
+        [context restoreGraphicsState];
+    }
 }
 
 -(BOOL)computeLayout {
@@ -307,33 +384,40 @@
 -(void)drawValue:(float)value {
 	NSGraphicsContext* context = [NSGraphicsContext currentContext];
 	
-	if (value >= _xMin && value <= _xMax) {
+	if (value >= _xMin && value <= _xMax && _xMin != _xMax) {
+        
 		float pointX = [[self axes] locationForXValue:value yValue:0].x;
-		// line
-		[context saveGraphicsState];
-		[[NSBezierPath bezierPathWithRect:[[self axes] plotRect]] setClip];
-		[[NSColor blackColor] setStroke];
-		[NSBezierPath setDefaultLineWidth: 1];
-		[NSBezierPath strokeLineFromPoint:NSMakePoint(pointX, [[self axes] plotRect].origin.y) toPoint:NSMakePoint(pointX, [[self axes] plotRect].origin.y+[[self axes] plotRect].size.height)];
-		[context restoreGraphicsState];
-		// values
-		[context saveGraphicsState];
-		[[NSColor blackColor] setStroke];
-		[NSBezierPath setDefaultLineWidth: 1];
-		for (unsigned i = 0; i < [[_interface roiList] countOfDisplayedROIs]; ++i) {
-			RoiEnhancementROIRec* roiRec = [[_interface roiList] displayedROIRec:i];
-			
-			float min = 0, mean = 0, max = 0;
-			[self yValueForROIRec:roiRec element:value min:&min mean:&mean max:&max];
-			
-			if ([[_interface options] min])
-				[self drawTrackingGizmoAtPoint:[[self axes] locationForXValue:value yValue:min] withValue:min];
-			if ([[_interface options] mean])
-				[self drawTrackingGizmoAtPoint:[[self axes] locationForXValue:value yValue:mean] withValue:mean];
-			if ([[_interface options] max])
-				[self drawTrackingGizmoAtPoint:[[self axes] locationForXValue:value yValue:max] withValue:max];
-		}
-		[context restoreGraphicsState];
+        
+        if( pointX == pointX) // test for nan
+        {
+            // line
+            [context saveGraphicsState];
+            [[NSBezierPath bezierPathWithRect:[[self axes] plotRect]] setClip];
+            [[NSColor blackColor] setStroke];
+            [NSBezierPath setDefaultLineWidth: 1];
+            
+            [NSBezierPath strokeLineFromPoint:NSMakePoint(pointX, [[self axes] plotRect].origin.y) toPoint:NSMakePoint(pointX, [[self axes] plotRect].origin.y+[[self axes] plotRect].size.height)];
+            [context restoreGraphicsState];
+            // values
+            [context saveGraphicsState];
+            [[NSColor blackColor] setStroke];
+            [NSBezierPath setDefaultLineWidth: 1];
+            for (unsigned i = 0; i < [[_interface roiList] countOfDisplayedROIs]; ++i)
+            {
+                RoiEnhancementROIRec* roiRec = [[_interface roiList] displayedROIRec:i];
+                
+                float min = 0, mean = 0, max = 0;
+                [self yValueForROIRec:roiRec element:value min:&min mean:&mean max:&max];
+                
+                if ([[_interface options] min])
+                    [self drawTrackingGizmoAtPoint:[[self axes] locationForXValue:value yValue:min] withValue:min];
+                if ([[_interface options] mean])
+                    [self drawTrackingGizmoAtPoint:[[self axes] locationForXValue:value yValue:mean] withValue:mean];
+                if ([[_interface options] max])
+                    [self drawTrackingGizmoAtPoint:[[self axes] locationForXValue:value yValue:max] withValue:max];
+            }
+            [context restoreGraphicsState];
+        }
 	}
 }
 

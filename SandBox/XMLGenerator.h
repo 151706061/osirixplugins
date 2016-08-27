@@ -13,19 +13,22 @@
 
 #import <OsiriX/DCM.h>
 
-#import <S_BurnerWindowController.h>
 
 
 @interface S_DicomNode : NSObject
 {
+	NSString* identifier;
 	DCMObject* dcmObject;
 	S_DicomNode* parent;
 	NSMutableArray* children;
+	id originalFile;
 }
 
+@property (retain) NSString* identifier;
 @property (retain) DCMObject* dcmObject;
 @property (retain) S_DicomNode* parent;
 @property (retain) NSMutableArray* children;
+@property (retain) id originalFile;
 
 - (id) initWithDCMObject:(DCMObject*)object;
 

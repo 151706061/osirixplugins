@@ -6,6 +6,7 @@
 #import "DCMJpegImportFilter.h"
 #import "OsiriXAPI/browserController.h"
 #import "OsiriXAPI/DICOMExport.h"
+#import "OsiriXAPI/DicomDatabase.h"
 
 @implementation DCMJpegImportFilter
 
@@ -22,24 +23,34 @@
 
 - (long) filterImage:(NSString*) menuName
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
     @try
     {
         NSMutableArray *images = [NSMutableArray array];
         
         if( [[[BrowserController currentBrowser] window] firstResponder] == [[BrowserController currentBrowser] oMatrix]) [[BrowserController currentBrowser] filesForDatabaseMatrixSelection: images];
-        else [[BrowserController currentBrowser] filesForDatabaseOutlineSelection: images];
+        else
+            [[BrowserController currentBrowser] filesForDatabaseOutlineSelection: images];
         
-        NSString *source = nil;
+        DicomImage *sourceImage = nil;
+        id sourceStudy = nil;
         
         if( [images count])
         {
             self.selectedStudyAvailable = YES;
-            source = [[images objectAtIndex: 0] valueForKey:@"completePath"];
+            sourceImage = [images objectAtIndex: 0];
         }
         else
-            self.selectedStudyAvailable = NO;
+        {
+            id study = [[BrowserController currentBrowser] selectedStudy];
+            
+            if( study == nil)
+                self.selectedStudyAvailable = NO;
+            else
+            {
+                self.selectedStudyAvailable = YES;
+                sourceStudy = study;
+            }
+        }
         
         if( e == nil)
             e = [[DICOMExport alloc] init];
@@ -77,25 +88,63 @@
         {
             BOOL valid = YES;
             
-            if( supportCustomMetaData && [[NSUserDefaults standardUserDefaults] integerForKey: @"JPEGtoDICOMMetaDataTag"] == 0)
+            if( supportCustomMetaData && ([[NSUserDefaults standardUserDefaults] integerForKey: @"JPEGtoDICOMMetaDataTag"] == 0 || (sourceImage == nil && [[NSUserDefaults standardUserDefaults] integerForKey: @"JPEGtoDICOMMetaDataTag"] == 1 && sourceStudy != nil)))
             {
-                source = nil;
+                sourceImage = nil;
                 
                 NSMutableDictionary *metaData = e.metaDataDict;
-                NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
                 
-                [metaData setValue: [d valueForKey: @"JPEGtoDICOMPatientsName"] forKey: @"patientsName"];
-                [metaData setValue: [d valueForKey: @"JPEGtoDICOMPatientsID"] forKey: @"patientID"];
-                [metaData setValue: [d objectForKey: @"JPEGtoDICOMPatientsDOB"] forKey: @"patientsBirthdate"];
-                if( [d integerForKey: @"JPEGtoDICOMPatientsSex"])
-                    [metaData setValue: @"F" forKey: @"patientsSex"];
+                if( [[NSUserDefaults standardUserDefaults] integerForKey: @"JPEGtoDICOMMetaDataTag"] == 1)
+                {
+                    [metaData setValue: [sourceStudy valueForKey: @"name"] forKey: @"patientsName"];
+                    [metaData setValue: [sourceStudy valueForKey: @"name"] forKey: @"patientName"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"patientID"] forKey: @"patientID"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"dateOfBirth"] forKey: @"patientsBirthdate"];
+                    [metaData setValue: [sourceStudy valueForKey: @"dateOfBirth"] forKey: @"patientBirthdate"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"patientSex"] forKey: @"patientsSex"];
+                    [metaData setValue: [sourceStudy valueForKey: @"patientSex"] forKey: @"patientSex"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"date"] forKey: @"studyDate"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"studyName"] forKey: @"studyDescription"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"modality"] forKey: @"modality"];
+                    
+                    [metaData setValue: [sourceStudy valueForKey: @"studyInstanceUID"] forKey: @"studyUID"];
+                    [metaData setValue: [sourceStudy valueForKey: @"studyID"] forKey: @"studyID"];
+                }
                 else
-                    [metaData setValue: @"M" forKey: @"patientsSex"];
-                
-                [metaData setValue: [d objectForKey: @"JPEGtoDICOMStudyDate"] forKey: @"studyDate"];
-                
-                [metaData setValue: [d valueForKey: @"JPEGtoDICOMStudyDescription"] forKey: @"studyDescription"];
-                [metaData setValue: [d valueForKey: @"JPEGtoDICOMModality"] forKey: @"modality"];
+                {
+                    NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+                    
+                    [metaData setValue: [d valueForKey: @"JPEGtoDICOMPatientsName"] forKey: @"patientsName"];
+                    [metaData setValue: [d valueForKey: @"JPEGtoDICOMPatientsName"] forKey: @"patientName"];
+                    
+                    [metaData setValue: [d valueForKey: @"JPEGtoDICOMPatientsID"] forKey: @"patientID"];
+                    
+                    [metaData setValue: [d objectForKey: @"JPEGtoDICOMPatientsDOB"] forKey: @"patientsBirthdate"];
+                    [metaData setValue: [d objectForKey: @"JPEGtoDICOMPatientsDOB"] forKey: @"patientBirthdate"];
+                    
+                    if( [d integerForKey: @"JPEGtoDICOMPatientsSex"])
+                    {
+                        [metaData setValue: @"F" forKey: @"patientsSex"];
+                        [metaData setValue: @"F" forKey: @"patientSex"];
+                    }
+                    else
+                    {
+                        [metaData setValue: @"M" forKey: @"patientsSex"];
+                        [metaData setValue: @"M" forKey: @"patientSex"];
+                    }
+                    
+                    [metaData setValue: [d objectForKey: @"JPEGtoDICOMStudyDate"] forKey: @"studyDate"];
+                    
+                    [metaData setValue: [d valueForKey: @"JPEGtoDICOMStudyDescription"] forKey: @"studyDescription"];
+                    
+                    [metaData setValue: [d valueForKey: @"JPEGtoDICOMModality"] forKey: @"modality"];
+                }
                 
                 [e setModalityAsSource: YES];
             }
@@ -123,10 +172,10 @@
                                 if( [[NSImage imageFileTypes] containsObject: [path pathExtension]] 
                                 || [[NSImage imageFileTypes] containsObject: NSFileTypeForHFSTypeCode( [[[[NSFileManager defaultManager] attributesOfFileSystemForPath: path error: nil] objectForKey: NSFileHFSTypeCode] longValue])])
                                 {
-                                    NSString *f = [self convertImageToDICOM:[fpath stringByAppendingPathComponent:path] source: source];
+                                    DicomImage *f = [self convertImageToDICOM:[fpath stringByAppendingPathComponent:path] source: sourceImage];
                                     
-                                    if( source == nil)
-                                        source = f;
+                                    if( sourceImage == nil)
+                                        sourceImage = f;
                                 }
                         }
                         else
@@ -137,10 +186,10 @@
                                 seriesDescriptionSet = YES;
                             }
                             
-                            NSString *f = [self convertImageToDICOM: fpath source: source];
+                            DicomImage *f = [self convertImageToDICOM: fpath source: sourceImage];
                             
-                            if( source == nil)
-                                source = f;
+                            if( sourceImage == nil)
+                                sourceImage = f;
                         }
                     }
                 }
@@ -153,18 +202,15 @@
     @finally {
         [e release];
         e = nil;
-        [pool release];
 	}
     
 	return 0;
 }
 
-- (NSString*) convertImageToDICOM:(NSString *)path source:(NSString *)src
+- (DicomImage*) convertImageToDICOM:(NSString *)path source:(DicomImage *)src
 {
-    NSString *createdFile = nil;
+    DicomImage *createdDicomImage = nil;
     
-	//create image
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSImage *image = [[[NSImage alloc] initWithContentsOfFile:path] autorelease];
 	
 	//if we have an image  get the info we need from the imageRep.
@@ -174,7 +220,7 @@
 		
 		if ([rep isMemberOfClass: [NSBitmapImageRep class]])
 		{
-			[e setSourceFile: src];
+			[e setSourceDicomImage: src];
 			
 			int bpp = [rep bitsPerPixel]/[rep samplesPerPixel];
 			int spp = [rep samplesPerPixel];
@@ -190,18 +236,26 @@
 			if( [rep isPlanar])
 				NSLog( @"********** DCMJpegImportFilter Planar is not yet supported....");
 			
-            createdFile = [[e writeDCMFile: nil] retain];
+            NSString *createdFile = [e writeDCMFile: nil];
 	
 			if( createdFile)
-                [BrowserController.currentBrowser.database addFilesAtPaths: [NSArray arrayWithObject: createdFile]
+            {
+                DicomDatabase *db = [[BrowserController currentBrowser] database];
+                
+                NSArray *objects = [db addFilesAtPaths: [NSArray arrayWithObject: createdFile]
                                                                             postNotifications: YES
                                                                                     dicomOnly: YES
                                                                           rereadExistingItems: YES
                                                                             generatedByOsiriX: YES];
+                
+                NSArray *images = [db objectsWithIDs: objects];
+                
+                if( images.count)
+                    createdDicomImage = [images objectAtIndex: 0];
+            }
 		}
 	}
-	[pool release];
     
-    return [createdFile autorelease];
+    return createdDicomImage;
 }
 @end

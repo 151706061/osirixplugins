@@ -4,7 +4,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "OsiriXAPI/PluginFilter.h"
+#import <OsiriXAPI/PluginFilter.h>
 
 @class DCMCalendarDate;
 
@@ -14,6 +14,5 @@
 }
 
 - (long) filterImage:(NSString*) menuName;
-- (void)convertImageToDICOM:(NSString *)path source:(NSString *) source;
 
 @end

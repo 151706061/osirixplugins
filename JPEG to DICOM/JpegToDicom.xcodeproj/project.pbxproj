@@ -13,7 +13,8 @@
 		8D5B49B4048680CD000E48DA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */; };
 		ABA48A650680BB600089EB4F /* DCMJpegImportFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = ABA48A640680BB600089EB4F /* DCMJpegImportFilter.h */; };
 		ABA48A670680BB690089EB4F /* DCMJpegImportFilter.m in Sources */ = {isa = PBXBuildFile; fileRef = ABA48A660680BB690089EB4F /* DCMJpegImportFilter.m */; };
-		CE4DD77E16063186009631FC /* OsiriXAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE4DD77D16063186009631FC /* OsiriXAPI.framework */; };
+		CE70F3DD1A92536C00984669 /* OsiriXAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE70F3DC1A92536C00984669 /* OsiriXAPI.framework */; };
+		CE7F0A501B502571000C8EF3 /* JPEG2DICOM.icns in Resources */ = {isa = PBXBuildFile; fileRef = CE7F0A4F1B502571000C8EF3 /* JPEG2DICOM.icns */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +28,8 @@
 		AB5D36050680E57E00F4007A /* JPEGtoDICOM.osirixplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JPEGtoDICOM.osirixplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABA48A640680BB600089EB4F /* DCMJpegImportFilter.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = DCMJpegImportFilter.h; sourceTree = "<group>"; };
 		ABA48A660680BB690089EB4F /* DCMJpegImportFilter.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = DCMJpegImportFilter.m; sourceTree = "<group>"; };
-		CE4DD77D16063186009631FC /* OsiriXAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OsiriXAPI.framework; sourceTree = "<group>"; };
+		CE70F3DC1A92536C00984669 /* OsiriXAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OsiriXAPI.framework; path = ../../osirix/build/Development/OsiriXAPI.framework; sourceTree = "<group>"; };
+		CE7F0A4F1B502571000C8EF3 /* JPEG2DICOM.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = JPEG2DICOM.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -36,7 +38,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D5B49B4048680CD000E48DA /* Cocoa.framework in Frameworks */,
-				CE4DD77E16063186009631FC /* OsiriXAPI.framework in Frameworks */,
+				CE70F3DD1A92536C00984669 /* OsiriXAPI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -58,7 +60,7 @@
 		089C1671FE841209C02AAC07 /* Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
-				CE4DD77D16063186009631FC /* OsiriXAPI.framework */,
+				CE70F3DC1A92536C00984669 /* OsiriXAPI.framework */,
 				1058C7ACFEA557BF11CA2CBB /* Linked Frameworks */,
 				1058C7AEFEA557BF11CA2CBB /* Other Frameworks */,
 			);
@@ -69,6 +71,7 @@
 			isa = PBXGroup;
 			children = (
 				8D5B49B7048680CD000E48DA /* Info.plist */,
+				CE7F0A4F1B502571000C8EF3 /* JPEG2DICOM.icns */,
 				8464FB2914AC5A99005E47E1 /* Options.xib */,
 				089C167DFE841241C02AAC07 /* InfoPlist.strings */,
 			);
@@ -157,6 +160,8 @@
 /* Begin PBXProject section */
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+			};
 			buildConfigurationList = BF90E90E088F520B0078E0EC /* Build configuration list for PBXProject "JpegToDicom" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
@@ -181,6 +186,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE7F0A501B502571000C8EF3 /* JPEG2DICOM.icns in Resources */,
 				8D5B49B0048680CD000E48DA /* InfoPlist.strings in Resources */,
 				8464FB2A14AC5A99005E47E1 /* Options.xib in Resources */,
 			);
@@ -228,7 +234,9 @@
 				COPY_PHASE_STRIP = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../osirix/osirix/build/Development\"",
-					"\"$(SRCROOT)\"",
+					"$(SRCROOT)",
+					/Users/admin/osirix/build/Development,
+					/Users/antoinerosset/osirix/build/Development,
 				);
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
@@ -268,8 +276,8 @@
 					x86_64,
 					i386,
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				SDKROOT = macosx10.7;
+				CLANG_LINK_OBJC_RUNTIME = NO;
+				SDKROOT = macosx10.8;
 			};
 			name = Development;
 		};
